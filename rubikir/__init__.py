@@ -30,20 +30,6 @@ class IfElse(Stat):
         return ifelse
 
 
-class Match(Stat):
-    def __init__(self, branch_map):
-        self.branch_map = branch_map
-
-    def __str__(self):
-        match = 'MATCH START\n'
-        for case, branch in self.branch_map.items():
-            match += 'CASE ' + str(case) + ':\n'
-            for stat in branch:
-                match += indent(str(stat)) + '\n'
-        match += 'MATCH END'
-        return match
-
-
 class Var:
     def __init__(self, identifier, program):
         self.identifier = identifier
@@ -89,10 +75,6 @@ class Load(Expr):
         return 'LOAD ' + str(self.key)
 
 
-class GetState(Expr):
-    pass
-
-
 class Store(Stat):
     def __init__(self, key, value):
         self.key = key
@@ -100,14 +82,6 @@ class Store(Stat):
 
     def __str__(self):
         return 'STORE ' + str(self.key) + ' <- ' + str(self.value)
-
-
-class SetState(Stat):
-    def __init__(self, state):
-        self.state = state
-
-    def __str__(self):
-        return 'SETSTATE ' + str(self.state)
 
 
 class InsertMeta(Stat):
@@ -201,22 +175,24 @@ class Op(Expr):
             ')'
         )
 
-
-class NoHole(Expr):
-    def __str__(self):
-        return 'NOHOLE'
-
-
-class Prepare(Stat):
+class Create(Stat):
     def __init__(self, identifier, initial_map):
         self.identifier = identifier
         self.initial_map = initial_map
     
     def __str__(self):
         return (
-            'PREPARE @ ' + str(self.identifier) + ': ' + 
+            'Create @ ' + str(self.identifier) + ': ' + 
             str_dict(self.initial_map)
         )
+
+
+class Contain(Expr):
+    def __init__(self, identifier):
+        self.identifier = identifier
+
+    def __str__(self):
+        return 'CONTAIN ' + str(self.identifier)
 
 
 class Delete(Stat):
