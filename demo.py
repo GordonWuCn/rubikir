@@ -19,7 +19,7 @@ START, MORE = 0, 1
 
 finalize = [
     Assemble(),
-    External([Field('srcip'), Field('dstip')], queue=True),
+    External([Field('srcip'), Field('dstip')], data=True),
     Delete(),
 ]
 
@@ -33,9 +33,9 @@ ip_program.set_code([
     # if identifier not in <instance table>:
     #     create instance at <instance table>[identifier]
     #     set <instance table>[identifier].count to 0
-    IfElse(Contain(Rval(identifier)), [
+    IfElse(Contain(Rval(identifier)), [], [
         Create(Rval(identifier), {count: Constant(0), state: Constant(START)}),
-    ], []),
+    ]),
     Store(count, Op('add', [Load(count), Constant(1)])),
     # insert payload into instance's queue, at offset with length
     InsertMeta(Field('offset'), Field('length')),

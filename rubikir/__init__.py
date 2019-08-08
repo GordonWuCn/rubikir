@@ -112,14 +112,14 @@ class Assemble(Stat):
 
 
 class External(Stat):
-    def __init__(self, dep_list, queue=False):
+    def __init__(self, dep_list, data=False):
         self.dep_list = dep_list
-        self.queue = queue
+        self.data = data
 
     def __str__(self):
         ext = 'EXTERNAL ' + str_list(self.dep_list)
-        if self.queue:
-            ext += ' AND QUEUE'
+        if self.data:
+            ext += ' AND DATA'
         return ext
 
 
