@@ -6,7 +6,7 @@ from rubikir import *
 
 # create a program instance, which uses queue APIs 
 # include Insert, Assemble, External with queue=True, and Eject maybe in the future
-ip_program = Program(queue_api=True)
+ip_program = Program(name = 'ip', queue_api=True)
 
 # name declarations
 # variable is per-packet temporary storage
@@ -24,7 +24,7 @@ finalize = [
 ]
 
 wait_for_more = [
-    Store(state, Constant(MORE))
+    Assign(state, Constant(MORE))
 ]
 
 ip_program.set_code([
@@ -33,14 +33,14 @@ ip_program.set_code([
     # if identifier not in <instance table>:
     #     create instance at <instance table>[identifier]
     #     set <instance table>[identifier].count to 0
-    IfElse(Contain(Rval(identifier)), [], [
-        Create(Rval(identifier), {count: Constant(0), state: Constant(START)}),
+     IfElse(Contain(identifier), [], [
+        Create((identifier), {count: Constant(0), state: Constant(START)}),
     ]),
-    Store(count, Op('add', [Load(count), Constant(1)])),
+    Assign(count, Op('add', [count, Constant(1)])),
     # insert payload into instance's queue, at offset with length
     InsertMeta(Field('offset'), Field('length')),
-    InsertData(Field('offset'), Field('length'), Field('payload')),
-    IfElse(Op('equal', [Load(state), Constant(START)]), [
+    InsertData(Field('payload')),
+    IfElse(Op('equal', [state, Constant(START)]), [
         IfElse(SeqSeen('dont_frag'), finalize, wait_for_more)
     ], [  # MORE
         IfElse(Field('more_frag'), wait_for_more, finalize),

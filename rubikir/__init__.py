@@ -1,5 +1,5 @@
-# 
-
+from .OP import * 
+from .buffer import *
 class Stat:
     pass
 
@@ -8,6 +8,10 @@ class Assign(Stat):
     def __init__(self, variable, expression):
         self.variable = variable
         self.expression = expression
+
+    def literal(proto_name):
+        return self.variable.literal(proto_name) + ' = ' + \
+            self.expression.literal(proto_name) + ';\n'
 
     def __str__(self):
         return 'ASSIGN ' + self.variable.identifier + ' <- ' + str(self.expression)
@@ -19,6 +23,16 @@ class IfElse(Stat):
         self.true_branch = true_branch
         self.false_branch = false_branch
     
+    def literal(proto_name):
+        code = ''
+        code += f'if({self.condition.literal()}) {{\n'
+        for stat in self.true_branch:
+            code += stat.literal(proto_name)
+        code += '}\nelse{\n'
+        for stat in self.false_branch:
+            code += stat.literal(proto_name)
+
+
     def __str__(self):
         ifelse = 'IF ' + str(self.condition) + '\n'
         for stat in self.true_branch:
@@ -29,11 +43,13 @@ class IfElse(Stat):
         ifelse += 'IF END'
         return ifelse
 
-
 class Var:
     def __init__(self, identifier, program):
         self.identifier = identifier
         self.program = program
+
+    def literal(proto_name):
+        return self.program.name +  "_temp->" + self.identifier
 
     def __str__(self):
         return self.identifier
@@ -42,18 +58,14 @@ class Var:
 class Expr:
     pass
 
-
-class Rval(Expr):
-    def __init__(self, variable):
-        self.variable = variable
-
-    def __str__(self):
-        return 'RVAL ' + str(self.variable)
-
-
 class Field(Expr):
     def __init__(self, name):
         self.name = name
+
+    def literal(proto_name, option):
+        return {'eval': proto_name + "_header->" + self.name,
+                'literal': self.name}[option]
+    
 
     def __str__(self):
         return 'FIELD ' + self.name
@@ -67,65 +79,11 @@ class SeqSeen(Expr):
         return 'SEQSEEN ' + self.name
 
 
-class Load(Expr):
-    def __init__(self, key):
-        self.key = key
-
-    def __str__(self):
-        return 'LOAD ' + str(self.key)
-
-
-class Store(Stat):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def __str__(self):
-        return 'STORE ' + str(self.key) + ' <- ' + str(self.value)
-
-
-class InsertMeta(Stat):
-    def __init__(self, offset, length):
-        self.offset = offset
-        self.length = length
-
-    def __str__(self):
-        return 'INSERT @' + str(self.offset) + ', len: ' + str(self.length)
-
-
-class InsertData(Stat):
-    def __init__(self, offset, length, payload):
-        self.offset = offset
-        self.length = length
-        self.payload = payload
-
-    def __str__(self):
-        return (
-            'INSERTDATA @ ' + str(self.offset) + ', len: ' + str(self.length) +
-            ', payload: ' + str(self.payload)
-        )
-
-
-class Assemble(Stat):
-    def __str__(self):
-        return 'ASSEMBLE'
-
-
-class External(Stat):
-    def __init__(self, dep_list, data=False):
-        self.dep_list = dep_list
-        self.data = data
-
-    def __str__(self):
-        ext = 'EXTERNAL ' + str_list(self.dep_list)
-        if self.data:
-            ext += ' AND DATA'
-        return ext
-
 
 class Program:
-    def __init__(self, queue_api=True):
+    def __init__(self, name, queue_api=True):
         self.stat_list = None
+        self.name = name
         self.key_list = []
         self.var_list = []
         self.queue_api = queue_api
@@ -159,27 +117,40 @@ class Key:
         self.identifier = identifier
         self.program = program
 
+    def literal(proto_name):
+        return self.program.name +  "_data->" + self.identifier
+
     def __str__(self):
         return self.identifier
 
 
-class Op(Expr):
-    def __init__(self, type, operand_list):
-        self.type = type
-        self.operand_list = operand_list
 
-    def __str__(self):
-        return (
-            'OP:' + self.type + '(' + 
-            str_list([str(operand) for operand in self.operand_list]) +
-            ')'
-        )
 
 class Create(Stat):
+    #Create() can only be called once in a protocol.
     def __init__(self, identifier, initial_map):
         self.identifier = identifier
         self.initial_map = initial_map
     
+    def literal(proto_name):
+        code = f'{proto_name}_instance = (struct {proto_name}_instance_t*)\
+            malloc(sizeof(struct {proto_name}_instance_t));\n'
+        code += f'memset({proto_name}_instance, 0, sizeof(struct \
+            {proto_name}_select_t));\n'
+        for key, value in self.initial_map.items():
+            code += f'{key.literal(proto_name)} = {value.literal(proto_name)};\n'
+        code += f'{proto_name}_instance->{proto_name}_select = *{proto_name}_select;\n'
+        code += f'{proto_name}_instance->{proto_name}_data = {proto_name}_data;\n'
+        code += f'{proto_name}_instance->state = ?;\n'
+        code += f'{proto_name}_instance->rec_ptr = timer_update(\
+            &{proto_name}_list, {proto_name}_instance, NULL, now);\n'
+        code += f'init_buf_list(&{proto_name}_instance->bufs);\n'
+        code += f'hash = {proto_name}_hash({proto_name}_select);\n'
+        code += f'tommy_hashdyn_insert(&{proto_name}_hashtable, \
+            &{proto_name}_instance->node, {proto_name}_instance, hash);\n'
+        self.ecode = code
+        return code        
+
     def __str__(self):
         return (
             'Create @ ' + str(self.identifier) + ': ' + 
@@ -190,6 +161,10 @@ class Create(Stat):
 class Contain(Expr):
     def __init__(self, identifier):
         self.identifier = identifier
+
+    def literal(proto_name):
+        return f'{proto_name}_instance = tommy_hashdyn_search(&{proto_name}_hashtable, \
+            {proto_name}_compare, {proto_name}_select, {self.identifier.literal(proto_name)})'
 
     def __str__(self):
         return 'CONTAIN ' + str(self.identifier)
@@ -203,6 +178,9 @@ class Delete(Stat):
 class Constant(Expr):
     def __init__(self, value):
         self.value = value
+
+    def literal(proto_name):
+        return str(self.value)
 
     def __str__(self):
         return 'CONST ' + str(self.value)
