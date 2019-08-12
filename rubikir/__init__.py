@@ -1,5 +1,7 @@
 from .OP import * 
 from .buffer import *
+from .code_gen import *
+
 class Stat:
     pass
 
@@ -87,6 +89,9 @@ class Program:
         self.key_list = []
         self.var_list = []
         self.queue_api = queue_api
+        self.type = 0 #connection_oriented or connectionless 
+        self.hcode = ''
+        self.dcode = ''
 
     def variable(self, name):
         var = Var(name, self)
@@ -100,6 +105,9 @@ class Program:
 
     def set_code(self, stat_list):
         self.stat_list = stat_list
+
+
+
 
     def __str__(self):
         prog = 'Program\n'
@@ -174,6 +182,17 @@ class Delete(Stat):
     def __str__(self):
         return 'DELETE'
 
+    def literal(proto_name):
+        # TODO: connection type should be specified
+        code = f"\tfree_buf_list({proto_name}_instance->bufs);\n"
+        code += f"\ttommy_hashdyn_remove_existing(&{proto_name} \
+            _hashtable, &{proto_name}_instance->node);\n"
+        code += f"\tif({proto_name}_instance->time_record_leader) deregister_timer(&\
+            {proto_name}_list, {proto_name}_instance->rec_ptr);\n"
+        # TODO: I should whether this layer has perm data
+        # code += "\tfree({proto_name}_instance->{proto_name}_data);\n"
+        code += f"\tfree({distinction}_instance->is_active_part);\n"
+        code += f"\tfree({distinction}_instance);\n"
 
 class Constant(Expr):
     def __init__(self, value):

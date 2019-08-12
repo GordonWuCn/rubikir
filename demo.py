@@ -33,7 +33,7 @@ ip_program.set_code([
     # if identifier not in <instance table>:
     #     create instance at <instance table>[identifier]
     #     set <instance table>[identifier].count to 0
-     IfElse(Contain(identifier), [], [
+    IfElse(Contain(identifier), [], [
         Create((identifier), {count: Constant(0), state: Constant(START)}),
     ]),
     Assign(count, Op('add', [count, Constant(1)])),

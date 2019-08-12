@@ -245,7 +245,59 @@ class InsertData(Stat):
 class Assemble(Stat):
     def __str__(self):
         return 'ASSEMBLE'
-
+    def literal(proto_name):
+    	code = "\
+					{0}_bufs = {0}_instance->bufs;\n\
+					if({0}_bufs->is_tree || {0}_bufs->packet_count > {0}_THRESHOLD){{\n\
+						{0}_buf = malloc({0}_bufs->buf_len);\n\
+						{0}_buf_length = {0}_bufs->buf_len;\n\
+						int offset = 0;\n\
+						struct avl_node * stack[{0}_bufs->packet_count];\n\
+						int stack_ptr = 0;\n\
+						struct avl_node * cur_ptr = {0}_bufs->root->node;\n\
+						struct avl_node * tmp;\n\
+						while({0}_bufs->packet_count > 0) {{\n\
+							if(cur_ptr) {{\n\
+								stack[stack_ptr++] = cur_ptr;\n\
+								cur_ptr = cur_ptr->left;\n\
+							}}\n\
+							else{{\n\
+								cur_ptr = stack[--stack_ptr];\n\
+								memcpy({0}_buf + offset, ((struct buffer_node*)cur_ptr)->buf.buf,\n\
+										((struct buffer_node*)cur_ptr)->buf.len);\n\
+								offset += ((struct buffer_node*)cur_ptr)->buf.len;\n\
+								free(((struct buffer_node*)cur_ptr)->buf.buf);\n\
+								tmp = cur_ptr;\n\
+								cur_ptr = cur_ptr->right;\n\
+								free(tmp);\n\
+								{0}_bufs->packet_count--;\n\
+							}}\n\
+						}}\n\
+						{0}_bufs->buf_len = 0;\n\
+						{0}_bufs->is_tree = 0;\n\
+						{0}_bufs->root->node = NULL;\n\
+						{0}_bufs->root->head = NULL;\n\
+						{0}_has_buf = 1;\n\
+					}}\n\
+					else{{\n\
+						{0}_buf = malloc({0}_bufs->buf_len);\n\
+						{0}_buf_length = {0}_bufs->buf_len;\n\
+						int offset = 0;\n\
+						struct buf_list* cur_buf;\n\
+						struct buf_list* pre_buf;\n\
+						for(cur_buf = {0}_bufs->head->next; cur_buf != NULL;) {{\n\
+							memcpy({0}_buf + offset, cur_buf->buf.buf, cur_buf->buf.len);\n\
+							offset += cur_buf->buf.len;\n\
+							pre_buf = cur_buf;\n\
+							cur_buf = cur_buf->next;\n\
+							free(pre_buf->buf.buf);\n\
+							free(pre_buf);\n\
+						}}\n\
+						{0}_bufs->buf_len = 0;\n\
+						{0}_bufs->packet_count = 0;\n\
+						{0}_bufs->head->next = NULL;\n\
+						{0}_has_buf = 1;\n\
+						}}\n".format(proto_name)
 
 class External(Stat):
     def __init__(self, dep_list, data=False):
