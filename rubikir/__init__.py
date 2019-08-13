@@ -2,6 +2,10 @@ from .OP import *
 from .buffer import *
 from .code_gen import *
 
+import sys
+sys.path.append("C:\\Users\\Gordon Wu\\Documents\\GitHub\\rubik-frontend")
+import ip
+
 class Stat:
     pass
 
@@ -60,17 +64,17 @@ class Var:
 class Expr:
     pass
 
-class Field(Expr):
-    def __init__(self, name):
-        self.name = name
+# class Field(Expr):
+#     def __init__(self, name):
+#         self.name = name
 
-    def literal(proto_name, option):
-        return {'eval': proto_name + "_header->" + self.name,
-                'literal': self.name}[option]
+#     def literal(proto_name, option):
+#         return {'eval': proto_name + "_header->" + self.name,
+#                 'literal': self.name}[option]
     
 
-    def __str__(self):
-        return 'FIELD ' + self.name
+#     def __str__(self):
+#         return 'FIELD ' + self.name
 
 
 class SeqSeen(Expr):
